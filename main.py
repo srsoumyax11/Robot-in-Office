@@ -16,7 +16,8 @@ if sys.platform.startswith("linux"):
         print("2. Click the gear/cog wheel icon in the bottom right corner")
         print("3. Select \033[96m'Ubuntu on Xorg'\033[0m or \033[96m'GNOME on Xorg'\033[0m")
         print("4. Log back in and run this application again.\n")
-        sys.exit(1)
+
+        # sys.exit(1)
 
 try:
     from pynput.keyboard import Controller as KeyboardController, Key
