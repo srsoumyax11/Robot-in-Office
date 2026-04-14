@@ -199,6 +199,16 @@ def ask_list(prompt: str, options: list) -> str:
             return options[idx]
 
 
+def countdown_timer(seconds: int, message: str = "Starting in"):
+    """Display a live countdown timer that updates every second."""
+    for remaining in range(seconds, 0, -1):
+        sys.stdout.write(f"\r\033[K{message} \033[93m{remaining}\033[0m seconds...")
+        sys.stdout.flush()
+        time.sleep(1)
+    sys.stdout.write(f"\r\033[K")
+    sys.stdout.flush()
+
+
 # --- Background Mouse Thread ---
 
 class MouseWorker(threading.Thread):
@@ -229,8 +239,8 @@ class MouseWorker(threading.Thread):
 def execute_just_keep_active():
     print("\n\033[92m✓\033[0m Mode: \033[1mJust keep active\033[0m")
     print("Expected outcome: \033[96m2 presses / min\033[0m")
-    print("Starting in 3 seconds... Press Ctrl+C to abort.")
-    time.sleep(3)
+    print("Press Ctrl+C to abort.")
+    countdown_timer(3, "Starting in")
     
     round_no = 1
     while True:
@@ -245,12 +255,9 @@ def execute_just_keep_active():
         time.sleep(0.05)
         keyboard.release(Key.up)
         
-        sys.stdout.write("\033[92mDone.\033[0m Waiting 60s.")
-        sys.stdout.flush()
-        
-        # We wait 60 seconds (broken up to handle keyboard interrupts gracefully without big delay)
-        for _ in range(60):
-            time.sleep(1)
+        print("\033[92m✓ Done\033[0m")
+        countdown_timer(60, "Waiting")
+        print(f"\033[36m❖ Round {round_no} Completed\033[0m\n")
         round_no += 1
 
 
@@ -279,6 +286,7 @@ def run_tab_session(app_name, interval, settings):
         wait_time = random.randint(w_min, w_max)
         press_count = random.randint(p_min, p_max)
         
+        # Live countdown for wait time
         for remaining in range(wait_time, 0, -1):
             sys.stdout.write(f"\r\033[K   \033[93mWAIT:\033[0m {remaining}s left until next action...")
             sys.stdout.flush()
@@ -324,8 +332,7 @@ def execute_complex_flow(config, do_browser, b_level, do_ide, i_level, do_mouse)
     if do_mouse:
         print(f" - Mouse:        \033[96mRandom Jitter Enabled\033[0m")
         
-    print("\nStarting in \033[93m" + str(config.INITIAL_DELAY) + "s\033[0m...")
-    time.sleep(config.INITIAL_DELAY)
+    countdown_timer(config.INITIAL_DELAY, "Starting in")
     
     if do_mouse:
         m_worker = MouseWorker(config)
