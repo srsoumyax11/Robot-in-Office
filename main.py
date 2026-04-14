@@ -253,23 +253,22 @@ class MouseWorker(threading.Thread):
         self.running = True
         
     def run(self):
-        s_min, s_max = self.config.MOUSE_CONFIG["scroll_range"]
-        batch_min, batch_max = self.config.MOUSE_CONFIG.get("scroll_batch_range", (20, 40))
         sl_min, sl_max = self.config.MOUSE_CONFIG["sleep_range"]
         time.sleep(self.config.INITIAL_DELAY)
         
         while self.running:
-            scroll_count = random.randint(batch_min, batch_max)
-            for _ in range(scroll_count):
-                steps = random.randint(s_min, s_max)
-                mouse.scroll(0, steps)
-                time.sleep(0.01)
+            wait_time = random.randint(int(sl_min), int(sl_max))
+            for remaining in range(wait_time, 0, -1):
+                sys.stdout.write(f"\r\033[K   \033[93mMOUSE WAIT:\033[0m {remaining}s until next scroll...")
+                sys.stdout.flush()
+                time.sleep(1)
 
-            sleep_time = random.uniform(sl_min, sl_max)
-            sys.stdout.write(f"\033[s\033[A\033[50C\033[90m🖱️ Mouse scrolled {scroll_count}x ({s_min}..{s_max}) then slept {sleep_time:.1f}s\033[K\033[0m\033[u")
+            steps = random.randint(-2, 2)
+            if steps != 0:
+                mouse.scroll(0, steps)
+
+            sys.stdout.write(f"\r\033[K   \033[92mMOUSE ACTION:\033[0m Scrolled {steps:+d}\n")
             sys.stdout.flush()
-            
-            time.sleep(sleep_time)
 
 
 # --- Action Logic ---
