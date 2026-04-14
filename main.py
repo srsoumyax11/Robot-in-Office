@@ -118,6 +118,7 @@ WORK_SETTINGS = {
 
 MOUSE_CONFIG = {
     "scroll_range": (-3, 3),
+    "scroll_batch_range": (20, 40),
     "sleep_range": (5, 10)
 }
 """
@@ -209,6 +210,40 @@ def countdown_timer(seconds: int, message: str = "Starting in"):
     sys.stdout.flush()
 
 
+def print_selection_summary(config, do_browser, b_level, do_ide, i_level, do_mouse):
+    print_header()
+    print("\n\033[1;96mReview your selected automation settings:\033[0m\n")
+    print(f"  Browser automation: \033[92m{'Yes' if do_browser else 'No'}\033[0m")
+    if do_browser:
+        browser_settings = config.WORK_SETTINGS['BROWSER'][b_level]
+        print(f"    - Intensity: \033[96m{b_level}\033[0m")
+        print(f"    - Session duration: \033[93m{browser_settings['session_duration']}s\033[0m")
+        print(f"    - Press range: \033[93m{browser_settings['press_range']}\033[0m")
+        print(f"    - Wait range: \033[93m{browser_settings['wait_range']}\033[0m")
+
+    print(f"  IDE automation: \033[92m{'Yes' if do_ide else 'No'}\033[0m")
+    if do_ide:
+        ide_settings = config.WORK_SETTINGS['IDE'][i_level]
+        print(f"    - Intensity: \033[96m{i_level}\033[0m")
+        print(f"    - Session duration: \033[93m{ide_settings['session_duration']}s\033[0m")
+        print(f"    - Press range: \033[93m{ide_settings['press_range']}\033[0m")
+        print(f"    - Wait range: \033[93m{ide_settings['wait_range']}\033[0m")
+        if i_level == 'low':
+            print("    - History: This low IDE mode uses a gentler, slower automation rhythm similar to Just keep active.")
+
+    print(f"  Mouse automation: \033[92m{'Yes' if do_mouse else 'No'}\033[0m")
+    if do_mouse:
+        print(f"    - Scroll jitter: \033[93m{config.MOUSE_CONFIG['scroll_range']}\033[0m")
+        print(f"    - Sleep range: \033[93m{config.MOUSE_CONFIG['sleep_range']}\033[0m")
+
+    print("\n\033[90mPress Enter to begin...\033[0m")
+    try:
+        input()
+    except KeyboardInterrupt:
+        print("\n\n\033[91mSetup canceled by user. Goodbye.\033[0m")
+        sys.exit(0)
+
+
 # --- Background Mouse Thread ---
 
 class MouseWorker(threading.Thread):
@@ -219,16 +254,19 @@ class MouseWorker(threading.Thread):
         
     def run(self):
         s_min, s_max = self.config.MOUSE_CONFIG["scroll_range"]
+        batch_min, batch_max = self.config.MOUSE_CONFIG.get("scroll_batch_range", (20, 40))
         sl_min, sl_max = self.config.MOUSE_CONFIG["sleep_range"]
         time.sleep(self.config.INITIAL_DELAY)
         
         while self.running:
-            steps = random.randint(s_min, s_max)
+            scroll_count = random.randint(batch_min, batch_max)
+            for _ in range(scroll_count):
+                steps = random.randint(s_min, s_max)
+                mouse.scroll(0, steps)
+                time.sleep(0.01)
+
             sleep_time = random.uniform(sl_min, sl_max)
-            mouse.scroll(0, steps)
-            
-            # Print cleanly to the right asynchronously using ANSI save/restore cursor
-            sys.stdout.write(f"\033[s\033[A\033[50C\033[90m🖱️ Mouse scrolled {steps:2} (Zzz {sleep_time:.1f}s)\033[K\033[0m\033[u")
+            sys.stdout.write(f"\033[s\033[A\033[50C\033[90m🖱️ Mouse scrolled {scroll_count}x ({s_min}..{s_max}) then slept {sleep_time:.1f}s\033[K\033[0m\033[u")
             sys.stdout.flush()
             
             time.sleep(sleep_time)
@@ -291,8 +329,8 @@ def run_tab_session(app_name, interval, settings):
             sys.stdout.write(f"\r\033[K   \033[93mWAIT:\033[0m {remaining}s left until next action...")
             sys.stdout.flush()
             time.sleep(1)
-            
-        sys.stdout.write(f"\r\033[K   \033[92mACTION:\033[0m Pressing DOWN {press_count}x")
+        sys.stdout.write("\n")
+        sys.stdout.write(f"   \033[92mACTION:\033[0m Pressing DOWN {press_count}x\n")
         sys.stdout.flush()
         
         for _ in range(press_count):
@@ -337,6 +375,11 @@ def execute_complex_flow(config, do_browser, b_level, do_ide, i_level, do_mouse)
     if do_mouse:
         m_worker = MouseWorker(config)
         m_worker.start()
+
+    if not do_ide and not do_browser:
+        print("\n\033[96mMouse-only automation enabled. Press Ctrl+C to stop.\033[0m")
+        while True:
+            time.sleep(1)
         
     round_no = 1
     while True:
@@ -407,7 +450,8 @@ def main():
     if not do_browser and not do_ide and not do_mouse:
         print("\n\033[91mNo automation selected! Exiting.\033[0m")
         return
-        
+
+    print_selection_summary(config, do_browser, b_level, do_ide, i_level, do_mouse)
     execute_complex_flow(config, do_browser, b_level, do_ide, i_level, do_mouse)
 
 
